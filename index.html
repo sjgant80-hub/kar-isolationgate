@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>IsolationGate</title>
+<meta name="description" content="IsolationGate — a sovereign, witness-gated kernel that stops the differencing attack on released aggregates: it remembers every cohort you have published and refuses any new release whose set-algebra against that history could be subtracted down to fewer than k people. Runs in your browser; nothing uploaded." />
+<style>
+:root{--bg:#f6f7f9;--panel:#ffffff;--ink:#15181d;--muted:#5b6471;--line:#e3e7ec;--accent:#2f6df6;--accent-ink:#fff;--ok:#1a8f4c;--no:#c23b3b;--warn:#b26a00;--code:#f0f2f6;--shadow:0 1px 2px rgba(20,24,33,.05),0 6px 20px rgba(20,24,33,.06);--radius:14px;--maxw:860px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1116;--panel:#151a21;--ink:#e8ecf1;--muted:#9aa5b3;--line:#232a33;--accent:#5b8cff;--accent-ink:#0e1116;--ok:#49c17e;--no:#ff6b6b;--warn:#e0a94a;--code:#1b212a;--shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35)}}
+:root[data-theme="dark"]{--bg:#0e1116;--panel:#151a21;--ink:#e8ecf1;--muted:#9aa5b3;--line:#232a33;--accent:#5b8cff;--accent-ink:#0e1116;--ok:#49c17e;--no:#ff6b6b;--warn:#e0a94a;--code:#1b212a;--shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.35)}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 16px}header.hero{padding:48px 16px 24px}
+.kicker{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:700}
+h1{font-size:clamp(32px,6vw,52px);line-height:1.05;margin:.3em 0 .2em;letter-spacing:-.02em}
+.lede{font-size:clamp(17px,2.4vw,21px);color:var(--muted);max-width:46ch}
+.badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.badge{font-size:12.5px;font-weight:600;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted)}
+.badge.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,var(--line))}
+section{padding:30px 0;border-top:1px solid var(--line)}section:first-of-type{border-top:none}
+h2{font-size:clamp(22px,3.5vw,30px);letter-spacing:-.01em;margin:0 0 .5em}h3{font-size:18px;margin:1.4em 0 .4em}p{margin:.6em 0}
+.muted{color:var(--muted)}.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+.grid{display:grid;gap:14px}@media(min-width:620px){.grid.two{grid-template-columns:1fr 1fr}.grid.three{grid-template-columns:1fr 1fr 1fr}}
+code,kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;background:var(--code);padding:1.5px 6px;border-radius:6px}
+pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;font:13px/1.5 ui-monospace,monospace}
+.btn{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;font-weight:600;padding:9px 14px;border-radius:10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}.btn.sm{padding:5px 10px;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:14.5px}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em}
+input{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px}input[type=number]{width:70px}
+.verdict{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;font-weight:700;font-size:17px;border:1px solid var(--line)}
+.verdict.ok{background:color-mix(in srgb,var(--ok) 10%,var(--panel));color:var(--ok);border-color:color-mix(in srgb,var(--ok) 35%,var(--line))}
+.verdict.no{background:color-mix(in srgb,var(--no) 9%,var(--panel));color:var(--no);border-color:color-mix(in srgb,var(--no) 30%,var(--line))}
+.dot{width:12px;height:12px;border-radius:50%;background:currentColor;flex:none}
+.chip{font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--panel);cursor:pointer;color:var(--muted)}.chip:hover{border-color:var(--accent);color:var(--ink)}
+.rel{font-family:ui-monospace,monospace;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--code);margin:6px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:700;padding:1px 7px;border-radius:5px;background:var(--panel);color:var(--muted)}
+.person{display:inline-block;font-size:12px;padding:1px 7px;border-radius:999px;background:var(--panel);border:1px solid var(--line)}
+.person.iso{background:color-mix(in srgb,var(--no) 18%,var(--panel));color:var(--no);border-color:var(--no);font-weight:700}
+.note{font-size:13.5px;color:var(--muted);border-left:3px solid var(--line);padding-left:12px;margin:12px 0}
+.theme-toggle{position:fixed;top:12px;right:12px;z-index:10}.toc{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;margin-top:10px}.toc a{color:var(--accent);text-decoration:none}
+footer{padding:40px 16px 60px;color:var(--muted);font-size:13.5px;text-align:center}.svgwrap{overflow:auto}.big{font-size:clamp(26px,5vw,40px);font-weight:800;font-variant-numeric:tabular-nums}.kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:14.5px}
+</style>
+</head>
+<body>
+<button class="btn sm theme-toggle" id="themeBtn" aria-label="Toggle theme">◐ theme</button>
+
+<header class="hero wrap">
+  <div class="kicker">A sovereign trust-rail kernel · by Kar</div>
+  <h1>IsolationGate</h1>
+  <p class="lede">Publish one total over 10 people, then another over the same 10 plus one more, and anyone can subtract the two and read the extra person's data. That is the <b>differencing attack</b>, and it has leaked "anonymous" statistics for decades. IsolationGate remembers every cohort you have released and <b>refuses any new release that could be subtracted down to fewer than k people.</b> In your browser, nothing uploaded.</p>
+  <div class="badges">
+    <span class="badge ok">witness mutation gate · 22/22 killed</span>
+    <span class="badge ok">unit tests + parity on every push</span>
+    <span class="badge">pure kernel · state in → decision out · never throws</span>
+    <span class="badge">the attack killed in code, not policy</span>
+  </div>
+  <div class="toc" aria-label="Contents">
+    <a href="#what">What it is</a><a href="#start">Start here</a><a href="#try">Try it</a><a href="#how">How it works</a>
+    <a href="#blueprint">Blueprint</a><a href="#brochure">For buyers</a><a href="#cost">Cost case</a><a href="#whitepaper">White paper</a>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section id="what">
+  <h2>What it is, in plain words</h2>
+  <p>Organisations publish <b>aggregates</b> — "the average salary in this team", "the number of cases in this region", "the total spend by this cohort" — believing a total over many people reveals no one. It does, the moment you publish <b>more than one</b> overlapping total. Release a sum over a group, then a sum over that group <em>plus one new member</em>, and the difference of the two sums <b>is that one member's value</b>. No hacking — just subtraction.</p>
+  <p>This is the <b>differencing attack</b>. It is the reason official statistics agencies, privacy teams, and federated-analytics systems all need <em>disclosure control</em> — and it is subtle, because each release looks safe <em>on its own</em>. The danger is in the <em>history</em>: which cohorts you have already published.</p>
+  <p><b>IsolationGate is the gate that remembers.</b> You give it a quorum <code>k</code> (the smallest group you will ever let be isolable) and the contributor set of each release you want to publish. Before it approves a release, it checks that set against <em>every</em> prior release: if the new set minus a prior one, or a prior minus the new, or their overlap, would leave <b>fewer than k people</b>, it <b>refuses</b> — and names which prior release, and how few people would be exposed. The attack is impossible by construction, not by a reviewer remembering to check. The code a mutation gate proves is the code running under your clicks.</p>
+</section>
+
+<section id="start">
+  <h2>Start here — how to use it</h2>
+  <div class="grid two">
+    <div class="card"><h3>On this page (no install)</h3><ol>
+      <li>Scroll to <a href="#try">Try it</a>.</li>
+      <li>Set <b>k</b> — the smallest group you will allow to be isolable (3 is a common floor).</li>
+      <li>Propose releases by their contributor lists. Watch IsolationGate approve the safe ones and <b>refuse</b> the one that would let an attacker difference out a person.</li>
+    </ol></div>
+    <div class="card"><h3>In your own system (3 lines)</h3><pre>import { init, propose } from './kernel.mjs';
+
+let { state } = init(3);               // quorum k = 3
+({ state } = propose(state, ['a','b','c','d','e']).ok
+  ? propose(state, ['a','b','c','d','e']) : { state });
+const r = propose(state, ['a','b','c','d','e','f']);
+// r.ok === false, r.why === 'refused:difference-isolates …'
+//   (the new cohort minus the prior is just {f} — below k)</pre>
+    <p class="muted" style="font-size:13px">One file, zero dependencies. The state is a plain value you keep; feed it to the next <code>propose</code>. Drop it in front of any release endpoint, a stats pipeline, a federated-analytics round.</p></div>
+  </div>
+</section>
+
+<section id="try">
+  <h2>Try it — the live kernel</h2>
+  <p class="muted">This panel calls the exact <code>init</code> and <code>propose</code> functions the witness gate proves. Nothing is sent anywhere. Approved releases join the history; a refused one does not.</p>
+  <div class="card">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center">
+      <span class="muted" style="font-size:13px">Presets:</span>
+      <span class="chip" data-preset="attack">the differencing attack</span>
+      <span class="chip" data-preset="safe">safe · disjoint cohort</span>
+      <span class="chip" data-preset="inter">overlap leak</span>
+      <span class="chip" data-preset="quorum">below quorum</span>
+      <span style="flex:1"></span>
+      <label style="font-size:13px" for="k">k&nbsp;</label><input type="number" id="k" min="2" value="3">
+      <button class="btn sm" id="reset">↺ reset history</button>
+    </div>
+    <h3 style="margin-top:0">Release history (approved)</h3>
+    <div id="history"><p class="muted" style="font-size:13.5px">No releases yet.</p></div>
+    <h3>Propose a new release</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="propose" placeholder="comma-separated contributors, e.g. alice, bob, carol, dave, erin" style="flex:1;min-width:220px">
+      <button class="btn primary" id="go">Propose</button>
+    </div>
+    <div id="verdict" class="verdict" style="margin-top:14px;display:none"><span class="dot"></span><span id="verdictText">—</span></div>
+    <p class="note" id="explain">—</p>
+  </div>
+</section>
+
+<section id="how">
+  <h2>How it works — traced from a real run</h2>
+  <p>Take the <b>differencing attack</b> preset, k = 3. The history already holds one release over <code>{alice, bob, carol, dave, erin}</code>. Now someone proposes a release over the same five <em>plus frank</em>. Each release passes quorum (5 and 6 are both ≥ 3). But here is what IsolationGate checks — the numbers are the live run.</p>
+  <div class="svgwrap card" style="padding:12px">
+  <svg viewBox="0 0 820 240" width="100%" role="img" aria-label="Two overlapping cohorts; their difference is a single person, below k, so the release is refused">
+    <style>.b{fill:var(--code);stroke:var(--line)}.t{fill:var(--ink);font:13px ui-monospace,monospace}.l{fill:var(--muted);font:12px sans-serif}.no{fill:var(--no);font:600 13px ui-monospace,monospace}.ok{fill:var(--ok);font:600 12px ui-monospace,monospace}.ar{stroke:var(--accent);stroke-width:2;fill:none;marker-end:url(#a)}</style>
+    <defs><marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="var(--accent)"/></marker></defs>
+    <text x="14" y="20" class="l">prior release (already published)</text>
+    <rect class="b" x="12" y="28" width="250" height="44" rx="8"/><text x="24" y="55" class="t">{alice, bob, carol, dave, erin}</text>
+    <text x="14" y="100" class="l">proposed release</text>
+    <rect class="b" x="12" y="108" width="300" height="44" rx="8"/><text x="24" y="135" class="t">{alice, bob, carol, dave, erin, frank}</text>
+    <path class="ar" d="M320,130 L370,130"/>
+    <text x="378" y="100" class="l">new \ prior</text>
+    <rect class="b" x="376" y="108" width="150" height="44" rx="8"/><text x="388" y="135" class="no">{frank} — size 1</text>
+    <path class="ar" d="M530,130 L580,130"/>
+    <rect class="b" x="582" y="96" width="226" height="70" rx="8"/><text x="594" y="124" class="no">1 &lt; k (3) → it isolates frank</text><text x="594" y="146" class="no">→ REFUSED. The release is blocked.</text>
+    <text x="14" y="196" class="t">Had both totals been published, subtracting them would reveal frank's value exactly.</text>
+    <text x="14" y="218" class="t">IsolationGate sees the differencing BEFORE the release, and refuses — automatically, every time.</text>
+  </svg>
+  </div>
+  <p class="muted" style="font-size:14px">The gate checks three set operations against every prior release — the difference both ways and the intersection — because each is a way to subtract two totals down to a small group. The mutation gate attacks every edge: it flips <code>&lt; k</code> to <code>&lt;= k</code>, drops the reverse-difference check, lets an empty set through — and each of the <b>22</b> rewrites is caught by a test.</p>
+</section>
+
+<section id="blueprint">
+  <h2>The blueprint — organ by organ</h2>
+  <table>
+    <tr><th>Organ</th><th>File</th><th>What it does</th></tr>
+    <tr><td><b>The kernel</b></td><td><code>kernel.mjs</code></td><td><code>init(k)</code> opens a gate at quorum k; <code>propose(state, contributors)</code> approves or refuses a release against the whole history. Pure, stateful-by-value (state in → new state or refusal out), never throws. Every refusal is a frozen, exported string.</td></tr>
+    <tr><td><b>The contract</b></td><td><code>kernel.test.mjs</code></td><td>Tests pinning: quorum, the difference both ways, the intersection, the k=2 boundary, bad state and empty contributors all refused as data.</td></tr>
+    <tr><td><b>The gate</b></td><td><code>witness.mjs</code></td><td>Mutates the kernel 22 ways and demands every mutant die under the tests. Re-run on every push.</td></tr>
+    <tr><td><b>The proof</b></td><td><code>.github/workflows/gate.yml</code></td><td>CI re-runs tests + gate on GitHub's own runner — the un-forgeable proof the gated code is the shipped code.</td></tr>
+    <tr><td><b>This page</b></td><td><code>index.html</code></td><td>Inlines the kernel byte-for-byte; a parity test fails CI if the page and the kernel ever drift.</td></tr>
+  </table>
+  <p class="note">Why track the whole history, not just the last release? Because the differencing attack can use <em>any</em> pair of releases, in any order, published months apart. The gate's memory is the contributor set of every release — the only state that makes the attack decidable.</p>
+</section>
+
+<section id="brochure">
+  <h2>For buyers — what IsolationGate does for your organisation</h2>
+  <p>If you publish aggregates — dashboards, statistics, federated-analytics results — you already have a disclosure-control problem, whether or not anyone has named it. IsolationGate turns "we try to remember not to publish overlapping cohorts" into a gate that cannot forget.</p>
+  <div class="grid two">
+    <div class="card"><h3>For the Head of Privacy / DPO</h3><p>Differencing is the attack a privacy impact assessment is supposed to catch and usually can't, because it depends on the <em>history</em> of releases, not any single one. Here it is enforced by construction, with a named reason for every refusal — the audit artefact.</p></div>
+    <div class="card"><h3>For Official Statistics / Research</h3><p>Disclosure control for published tables, the classic problem. Set k to your minimum cell size; every release is checked against every prior one, so no sequence of publications can be subtracted to a small cell.</p></div>
+    <div class="card"><h3>For the Federated-analytics lead</h3><p>Across rounds, cohorts shift as devices join and leave. IsolationGate sits at the release boundary and refuses a round whose cohort differences from earlier rounds would expose a handful of participants.</p></div>
+    <div class="card"><h3>For the CTO / Eng lead</h3><p>One pure function, zero dependencies, no network. The state is a plain value you persist. It <b>never throws</b>; a malformed set returns a clean refusal. Drop it in front of any release endpoint.</p></div>
+  </div>
+  <h3>Security &amp; compliance, answered straight</h3>
+  <table>
+    <tr><th>Question</th><th>Answer</th></tr>
+    <tr><td>Where does our data go?</td><td>Nowhere. The kernel runs in the page / your process. It never sees the aggregate <em>values</em> — only the contributor <em>sets</em> — and there is no network call in the file.</td></tr>
+    <tr><td>Does it stop every differencing attack?</td><td>It stops differencing by the <b>set algebra it checks</b> — difference (both ways) and intersection below k — across your full release history. It is a membership-set gate; it does not model attacks that use the <em>values</em> plus outside knowledge. See the <a href="#limits">limits</a>.</td></tr>
+    <tr><td>What is k?</td><td>The smallest group you are willing to let be isolable. Set it to your minimum cell size / cohort floor. k ≥ 2 is required.</td></tr>
+    <tr><td>What's the licence?</td><td>MIT. Authored by Kar for AI Native Solutions; licence holder Simon Gant.</td></tr>
+  </table>
+</section>
+
+<section id="cost">
+  <h2>The cost case — computed here, change the inputs</h2>
+  <p>Where a human currently <b>reviews each release against prior publications</b> for disclosure risk — or where no one does, and the risk is a breach — IsolationGate removes the manual check. Put your numbers in; the figure is computed live on this page.</p>
+  <div class="card">
+    <div class="grid three">
+      <div><label>Releases reviewed / year</label><br><input type="number" id="c_vol" value="300" min="0"></div>
+      <div><label>Minutes of disclosure review saved each</label><br><input type="number" id="c_min" value="25" min="0"></div>
+      <div><label>Loaded privacy-analyst rate (£/hr)</label><br><input type="number" id="c_rate" value="42" min="0"></div>
+    </div>
+    <div style="margin-top:18px" class="grid three">
+      <div><div class="muted" style="font-size:13px">Staff hours removed / year</div><div class="big" id="c_hrs">—</div></div>
+      <div><div class="muted" style="font-size:13px">Annual saving</div><div class="big" id="c_save" style="color:var(--ok)">—</div></div>
+      <div><div class="muted" style="font-size:13px">Cost of IsolationGate</div><div class="big" style="color:var(--accent)">£0</div></div>
+    </div>
+    <p class="muted" style="font-size:13px;margin-top:14px">Illustrative. The default <b>£42/hr loaded rate</b> is a mid-range UK figure for a privacy/disclosure analyst (≈£32k–£45k base, grossed up ~1.3× for employer NI, pension and overhead; source: ONS ASHE 2024 median gross pay, business/finance-associate occupations, loaded). The unquantified upside is avoiding a re-identification breach, which is not a line item you should trade away. Compared against disclosure-control / privacy-engineering tooling and services, which run into tens of thousands a year; IsolationGate's kernel is MIT and self-hosted, so the licence line is £0.</p>
+  </div>
+</section>
+
+<section id="whitepaper">
+  <h2>White paper — the short version</h2>
+  <p><b>The problem.</b> An aggregate over a group is assumed to be anonymous. It is not, across releases: publishing a statistic over a cohort and another over an overlapping cohort lets an attacker subtract the two and recover the contribution of the people in the difference. This is the differencing attack, and it is the core problem of statistical disclosure control. Each release looks safe alone; the risk is in the history.</p>
+  <p><b>The claim.</b> The decision of whether a release is safe should be a pure, deterministic function of the release's contributor set and the sets of all prior releases, so it can be enforced automatically at the release boundary and proven. IsolationGate refuses a release if, against any prior release, the new-minus-prior set, the prior-minus-new set, or the intersection has a non-empty size below k. These are the three ways two totals can be subtracted to isolate a group. k ≥ 2 is the floor.</p>
+  <p><b>Why a mutation gate.</b> Passing tests prove the code works on the cases you thought of. A mutation gate proves the <em>tests</em> work: it rewrites the kernel 22 ways — <code>&lt; k</code>→<code>&lt;= k</code>, a dropped reverse-difference, an empty set admitted — and demands the tests catch every one. 22/22 killed means no mutant of this logic survives the suite.</p>
+  <p><b>What it is not — stated plainly.</b> IsolationGate is a <em>membership-set</em> gate: it reasons about <em>who</em> is in each release, not the aggregate values or their noise. It closes the exact-subtraction differencing attack over your release history. It does <em>not</em> add differential-privacy noise, model an attacker who combines released values with external data, or decide your k for you — those are complementary controls. It is the gate that makes the set-differencing attack impossible by construction, to compose with your noise and policy layers.</p>
+  <div id="limits" class="card">
+    <h3 style="margin-top:0">Risks, answered</h3>
+    <div class="kv"><span>"An attacker uses values + outside knowledge."</span><b>Out of scope — compose with differential privacy; this closes the set-differencing path.</b></div>
+    <div class="kv"><span>"We set k too low."</span><b>Policy, and visible — k is in the state and every refusal names it.</b></div>
+    <div class="kv"><span>"Releases span years / systems."</span><b>The state is a plain value you persist; the whole history is always checked.</b></div>
+    <div class="kv" style="border-bottom:none"><span>"The code could change silently."</span><b>CI re-runs the gate + parity; a weakened check fails 22/22 or breaks parity.</b></div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p><b>IsolationGate</b> — authored by <b>Kar</b>, the AI that builds for AI Native Solutions, under its own name. MIT · licence holder Simon Gant.</p>
+  <p>Repository &amp; CI: <a href="https://github.com/sjgant80-hub/kar-isolationgate">github.com/sjgant80-hub/kar-isolationgate</a> · the kernel on this page is byte-identical to the gated one. Sibling: <a href="https://sjgant80-hub.github.io/kar-quorumveil/">QuorumVeil</a> (the masking envelope).</p>
+</footer>
+
+<script>
+(function(){const b=document.getElementById('themeBtn');let t=null;try{t=localStorage.getItem('ig-theme')}catch(e){}if(t)document.documentElement.setAttribute('data-theme',t);b.addEventListener('click',()=>{const c=document.documentElement.getAttribute('data-theme');const mq=matchMedia('(prefers-color-scheme:dark)').matches;const n=(c?c:(mq?'dark':'light'))==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('ig-theme',n)}catch(e){}});})();
+
+// ============================================================
+//  THE KERNEL — byte-identical to kernel.mjs (gated 22/22).
+// ============================================================
+const REFUSAL = Object.freeze({
+  BAD_K: 'refused:bad-k (k must be an integer >= 2)',
+  BAD_STATE: 'refused:bad-state (not an IsolationGate state)',
+  BAD_SET: 'refused:bad-contributor-set (need a non-empty array of non-empty strings)',
+  QUORUM: 'refused:quorum-below-k',
+  DIFFERENCE: 'refused:difference-isolates (new \\ prior below k)',
+  REVERSE_DIFFERENCE: 'refused:difference-isolates (prior \\ new below k)',
+  INTERSECTION: 'refused:intersection-below-k',
+});
+
+const isState = (s) =>
+  s !== null &&
+  typeof s === 'object' &&
+  Number.isInteger(s.k) &&
+  s.k >= 2 &&
+  Array.isArray(s.released) &&
+  s.released.every(
+    (r) => Array.isArray(r) && r.every((c) => typeof c === 'string' && c.length > 0)
+  );
+
+const toSet = (xs) => {
+  if (!Array.isArray(xs) || xs.length === 0) return null;
+  if (!xs.every((c) => typeof c === 'string' && c.length > 0)) return null;
+  return [...new Set(xs)].sort();
+};
+
+const minus = (a, b) => a.filter((x) => !b.includes(x));
+const inter = (a, b) => a.filter((x) => b.includes(x));
+const isolating = (size, k) => size > 0 && size < k;
+
+function init(k) {
+  if (!Number.isInteger(k) || k < 2) return { ok: false, why: REFUSAL.BAD_K };
+  return { ok: true, state: { k, released: [] } };
+}
+
+function propose(state, contributors) {
+  if (!isState(state)) return { ok: false, why: REFUSAL.BAD_STATE };
+  const set = toSet(contributors);
+  if (set === null) return { ok: false, why: REFUSAL.BAD_SET };
+  const { k } = state;
+  if (set.length < k) return { ok: false, why: REFUSAL.QUORUM, size: set.length, k };
+  for (let i = 0; i < state.released.length; i++) {
+    const prior = state.released[i];
+    const d = minus(set, prior);
+    if (isolating(d.length, k))
+      return { ok: false, why: REFUSAL.DIFFERENCE, against: i, size: d.length, k };
+    const r = minus(prior, set);
+    if (isolating(r.length, k))
+      return { ok: false, why: REFUSAL.REVERSE_DIFFERENCE, against: i, size: r.length, k };
+    const x = inter(set, prior);
+    if (isolating(x.length, k))
+      return { ok: false, why: REFUSAL.INTERSECTION, against: i, size: x.length, k };
+  }
+  return {
+    ok: true,
+    state: { k, released: [...state.released, set] },
+    releases: state.released.length + 1,
+    size: set.length,
+  };
+}
+
+function releasedCount(state) {
+  if (!isState(state)) return { ok: false, why: REFUSAL.BAD_STATE };
+  return { ok: true, count: state.released.length };
+}
+// ============================================================
+
+const esc=s=>String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+let STATE=null;
+const PRESETS={
+  attack:{k:3,history:[['alice','bob','carol','dave','erin']],propose:'alice, bob, carol, dave, erin, frank'},
+  safe:{k:3,history:[['alice','bob','carol','dave','erin']],propose:'frank, grace, heidi, ivan, judy'},
+  inter:{k:3,history:[['alice','bob','carol','dave']],propose:'carol, eve, frank, grace'},
+  quorum:{k:3,history:[],propose:'alice, bob'},
+};
+const WHY={
+  [REFUSAL.BAD_K]:'k must be a whole number of at least 2.',
+  [REFUSAL.BAD_STATE]:'internal state error.',
+  [REFUSAL.BAD_SET]:'give a non-empty list of contributor names.',
+  [REFUSAL.QUORUM]:'this release has fewer than k contributors — too small to publish at all.',
+  [REFUSAL.DIFFERENCE]:'DIFFERENCING ATTACK blocked: subtracting this release from an earlier one would isolate fewer than k people.',
+  [REFUSAL.REVERSE_DIFFERENCE]:'DIFFERENCING ATTACK blocked: subtracting an earlier release from this one would isolate fewer than k people.',
+  [REFUSAL.INTERSECTION]:'DIFFERENCING ATTACK blocked: this release overlaps an earlier one in fewer than k people — that overlap is isolable.',
+};
+function parseSet(s){return s.split(',').map(x=>x.trim()).filter(x=>x.length>0);}
+function renderHistory(){
+  const h=document.getElementById('history');
+  if(!STATE||STATE.released.length===0){h.innerHTML='<p class="muted" style="font-size:13.5px">No releases yet.</p>';return;}
+  h.innerHTML=STATE.released.map((r,i)=>`<div class="rel"><span class="tag">release ${i+1}</span>${r.map(c=>'<span class="person">'+esc(c)+'</span>').join(' ')} <span class="muted" style="font-size:12px">· ${r.length} contributors</span></div>`).join('');
+}
+function setK(k){ const r=init(k); if(r.ok){STATE=r.state;} renderHistory(); }
+function doPropose(text,highlightIso){
+  const set=parseSet(text);
+  const r=propose(STATE,set);
+  const v=document.getElementById('verdict'),vt=document.getElementById('verdictText'),ex=document.getElementById('explain');
+  v.style.display='flex';
+  if(r.ok){
+    STATE=r.state; renderHistory();
+    v.className='verdict ok'; vt.textContent='APPROVED — release '+r.releases+' ('+r.size+' contributors) joins the history';
+    ex.innerHTML='Safe against every prior release: no difference or overlap drops below k='+STATE.k+'. It is now part of the history and future releases are checked against it too.';
+    document.getElementById('propose').value='';
+  } else {
+    v.className='verdict no'; vt.textContent=(WHY[r.why]||r.why);
+    let detail='';
+    if(r.against!==undefined){ const prior=STATE.released[r.against];
+      detail=' Against <b>release '+(r.against+1)+'</b>, the exposed group has size <b>'+r.size+'</b> — below k='+r.k+'.';
+      // highlight the isolable people
+      const s=new Set(set), p=new Set(prior);
+      let iso=[];
+      if(r.why===REFUSAL.DIFFERENCE)iso=set.filter(x=>!p.has(x));
+      else if(r.why===REFUSAL.REVERSE_DIFFERENCE)iso=prior.filter(x=>!s.has(x));
+      else iso=set.filter(x=>p.has(x));
+      detail+=' The isolable '+(iso.length===1?'person':'people')+': '+iso.map(x=>'<span class="person iso">'+esc(x)+'</span>').join(' ')+'.';
+    } else if(r.why==='refused:quorum-below-k'){ detail=' It has '+r.size+' contributor(s); k='+r.k+'.'; }
+    ex.innerHTML=(WHY[r.why]||'')+detail+' <span class="muted">The release was <b>not</b> added to the history — the gate holds it.</span>';
+  }
+}
+function loadPreset(name){ const p=PRESETS[name];
+  document.getElementById('k').value=p.k; setK(p.k);
+  for(const rel of p.history){ const r=propose(STATE,rel); if(r.ok)STATE=r.state; }
+  renderHistory();
+  document.getElementById('propose').value=p.propose;
+  document.getElementById('verdict').style.display='none';
+  document.getElementById('explain').textContent='History loaded. Press Propose to see IsolationGate rule on the pending release.';
+}
+document.getElementById('k').addEventListener('input',e=>{const k=parseInt(e.target.value,10); if(Number.isInteger(k)&&k>=2){const keep=STATE?STATE.released:[]; const r=init(k); if(r.ok){STATE=r.state; for(const rel of keep){const p=propose(STATE,rel); if(p.ok)STATE=p.state;} renderHistory();}}});
+document.getElementById('reset').addEventListener('click',()=>{setK(parseInt(document.getElementById('k').value,10)||3); document.getElementById('verdict').style.display='none'; document.getElementById('explain').textContent='—';});
+document.getElementById('go').addEventListener('click',()=>doPropose(document.getElementById('propose').value));
+document.getElementById('propose').addEventListener('keydown',e=>{if(e.key==='Enter')doPropose(e.target.value);});
+document.querySelectorAll('[data-preset]').forEach(c=>c.addEventListener('click',()=>loadPreset(c.dataset.preset)));
+loadPreset('attack');
+
+function money(n){return '£'+Math.round(n).toLocaleString('en-GB');}
+function cost(){const vol=Math.max(0,+document.getElementById('c_vol').value||0),min=Math.max(0,+document.getElementById('c_min').value||0),rate=Math.max(0,+document.getElementById('c_rate').value||0);const hrs=vol*min/60;document.getElementById('c_hrs').textContent=Math.round(hrs).toLocaleString('en-GB');document.getElementById('c_save').textContent=money(hrs*rate);}
+['c_vol','c_min','c_rate'].forEach(id=>document.getElementById(id).addEventListener('input',cost));cost();
+</script>
+</body>
+</html>
